@@ -68,6 +68,11 @@ export const api = {
     req<{ url: string }>(`/favicons/auto?url=${encodeURIComponent(url)}`),
   fetchTitle: (url: string) =>
     req<{ title: string }>(`/favicons/title?url=${encodeURIComponent(url)}`),
+  warmFaviconCache: () =>
+    req<{ total: number; cached_locally: number; remote_only: number; skipped: number }>(
+      "/favicons/warm-cache",
+      { method: "POST" },
+    ),
   uploadFavicon: async (bookmarkId: number, file: File) => {
     const form = new FormData();
     form.append("file", file);

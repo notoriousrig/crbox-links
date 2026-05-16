@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { Download, Loader2, X } from "lucide-react";
 
 import { api } from "../api";
 import type { ImportResult } from "../types";
@@ -46,6 +46,11 @@ export function ImportModal({ open, onClose }: Props) {
       qc.invalidateQueries({ queryKey: ["categories"] });
       qc.invalidateQueries({ queryKey: ["tags"] });
     },
+  });
+
+  const warm = useMutation({
+    mutationFn: () => api.warmFaviconCache(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["bookmarks"] }),
   });
 
   if (!open) return null;
@@ -122,8 +127,39 @@ export function ImportModal({ open, onClose }: Props) {
           </div>
         )}
 
-        <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-sm">Close</button>
+        <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+          <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  <Download size={14} /> Cache favicons locally
+                </div>
+                <div className="text-xs text-zinc-500 mt-0.5">
+                  Download every bookmark's favicon to <code>data/favicons/auto/</code>. Takes a few minutes for ~2k bookmarks.
+                </div>
+              </div>
+              <button
+                onClick={() => warm.mutate()}
+                disabled={warm.isPending}
+                className="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm hover:bg-brand-600 disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+              >
+                {warm.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+                {warm.isPending ? "Warming…" : "Warm cache"}
+              </button>
+            </div>
+            {warm.data && (
+              <div className="text-xs text-green-700 dark:text-green-400 mt-1">
+                ✓ {warm.data.cached_locally} cached locally · {warm.data.remote_only} kept remote ·
+                {" "}{warm.data.skipped} skipped (uploads/library)
+              </div>
+            )}
+            {warm.isError && (
+              <div className="text-xs text-red-600">{(warm.error as Error).message}</div>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-sm">Close</button>
+          </div>
         </div>
       </div>
     </div>

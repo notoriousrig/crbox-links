@@ -13,6 +13,7 @@ from app.config import settings
 from app.database import get_db
 from app.models import Bookmark
 from app.services.favicon import auto_fetch, fetch_title
+from app.services.favicon_warm import warm_all
 
 
 router = APIRouter(prefix="/api/favicons", tags=["favicons"], dependencies=[RequireUser])
@@ -87,3 +88,14 @@ def list_lucide():
         "catalog_url": "https://cdn.jsdelivr.net/npm/lucide-static@latest/tags.json",
         "icon_url_template": "https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/{name}.svg",
     }
+
+
+@router.post("/warm-cache")
+def warm_cache():
+    """Backfill the local favicon cache for every bookmark.
+
+    Runs synchronously with a thread-pool of 16 workers, so ~2000 bookmarks
+    take a few minutes. The frontend should show a spinner and not time out
+    (nginx proxy_read_timeout is 600s for this endpoint).
+    """
+    return warm_all()

@@ -1,15 +1,19 @@
-"""Favicon resolution.
+"""Favicon resolution + local caching.
 
-Two responsibilities:
-  1. resolve_favicon(bookmark) -> URL the frontend can <img src="..."> with,
-     given the bookmark's favicon_source + favicon_ref.
-  2. auto_fetch(url) -> best-effort favicon URL discovered by parsing the
-     target page's HTML head and probing /favicon.ico, with fallback to
-     Google's s2/favicons service.
+Responsibilities:
+  1. resolve_favicon(bookmark) -> URL the frontend can <img src="..."> with.
+     Prefers a locally cached copy when available.
+  2. auto_fetch(url) -> discover favicon URL from a target page (parse <link
+     rel="icon">, probe /favicon.ico, fall back to Google s2). The discovered
+     URL is then downloaded via fetch_and_cache() so the bytes live on disk.
+  3. fetch_and_cache(url) -> download to <favicon_dir>/auto/<sha1>.<ext>,
+     return the /api/favicons/files/auto/... path. Dedupes by content hash.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -23,11 +27,12 @@ log = logging.getLogger(__name__)
 
 
 _FAVICON_REL = {"icon", "shortcut icon", "apple-touch-icon", "apple-touch-icon-precomposed"}
-_TIMEOUT = 6.0
+_TIMEOUT = 8.0
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; crbox-links/0.1)",
     "Accept": "text/html,application/xhtml+xml",
 }
+_MAX_FAVICON_BYTES = 512 * 1024  # 512KB — same cap as user uploads
 
 
 def resolve_favicon(b: Bookmark) -> str:
@@ -35,22 +40,21 @@ def resolve_favicon(b: Bookmark) -> str:
     src = b.favicon_source
     ref = b.favicon_ref
 
-    if src == "url" and ref:
-        return ref
-
     if src == "upload" and ref:
-        # ref is the bare filename in FAVICON_DIR — served by static mount
         return f"/api/favicons/files/{ref}"
 
     if src == "library" and ref:
-        # ref like "simpleicons:github" or "lucide:folder" or "emoji:🦀"
         return _library_url(ref)
 
-    # auto: use cached URL if we have one
+    # For "auto" and "url" sources, prefer the locally cached path
     if b.favicon_cached_url:
         return b.favicon_cached_url
 
-    # ultimate fallback: Google s2 service keyed on the host
+    # Cache wasn't populated — fall back to the original URL for "url" source
+    if src == "url" and ref:
+        return ref
+
+    # Ultimate fallback: Google s2 service keyed on the host
     try:
         host = urlparse(b.url).hostname or ""
         if host:
@@ -76,14 +80,21 @@ def _library_url(ref: str) -> str:
 
 
 def auto_fetch(url: str) -> str:
-    """Best-effort discover the page's favicon URL.
+    """Discover and locally cache the favicon for the given page URL.
 
-    Strategy:
-      1. GET the page (with redirects), parse <link rel="icon"> / apple-touch
-      2. Probe <host>/favicon.ico
-      3. Return Google s2 fallback
-    All paths return an absolute https URL when possible.
+    Returns a path like `/api/favicons/files/auto/<sha1>.<ext>` when the
+    download succeeds. Falls back to returning the discovered remote URL or
+    a Google s2 URL if local caching fails.
     """
+    discovered = _discover_favicon_url(url)
+    if not discovered:
+        return ""
+    cached = fetch_and_cache(discovered)
+    return cached or discovered
+
+
+def _discover_favicon_url(url: str) -> str:
+    """Page-side discovery only — no caching. Returns an absolute URL or ''."""
     try:
         parsed = urlparse(url)
         if not parsed.scheme:
@@ -103,7 +114,6 @@ def auto_fetch(url: str) -> str:
         except Exception as exc:
             log.debug("page fetch failed for %s: %s", url, exc)
 
-        # Probe /favicon.ico
         guess = f"{parsed.scheme}://{host}/favicon.ico"
         try:
             with httpx.Client(timeout=_TIMEOUT, headers=_HEADERS) as cli:
@@ -116,6 +126,60 @@ def auto_fetch(url: str) -> str:
         return f"https://www.google.com/s2/favicons?domain={host}&sz=64"
     except Exception:
         return ""
+
+
+def fetch_and_cache(url: str) -> str:
+    """Download `url`, write the bytes to <favicon_dir>/auto/<sha1>.<ext>,
+    and return the local /api/favicons/files/auto/... path.
+
+    Dedupes by SHA1 of the response body — many bookmarks pointing at the
+    same site share a single cached file. Returns "" on any failure (caller
+    falls back to the remote URL).
+    """
+    if not url:
+        return ""
+    try:
+        with httpx.Client(follow_redirects=True, timeout=_TIMEOUT, headers=_HEADERS) as cli:
+            resp = cli.get(url)
+            if resp.status_code >= 400 or not resp.content:
+                return ""
+            if len(resp.content) > _MAX_FAVICON_BYTES:
+                return ""
+            ext = _guess_ext(resp.headers.get("content-type", ""), url)
+            if not ext:
+                return ""
+            sha = hashlib.sha1(resp.content).hexdigest()
+            auto_dir = Path(settings.favicon_dir) / "auto"
+            auto_dir.mkdir(parents=True, exist_ok=True)
+            fname = f"{sha}{ext}"
+            target = auto_dir / fname
+            if not target.exists():
+                target.write_bytes(resp.content)
+            return f"/api/favicons/files/auto/{fname}"
+    except Exception as exc:
+        log.debug("fetch_and_cache failed for %s: %s", url, exc)
+        return ""
+
+
+def _guess_ext(content_type: str, url: str) -> str:
+    ct = content_type.lower().split(";")[0].strip()
+    if "svg" in ct:
+        return ".svg"
+    if "png" in ct:
+        return ".png"
+    if "webp" in ct:
+        return ".webp"
+    if "jpeg" in ct or "jpg" in ct:
+        return ".jpg"
+    if "x-icon" in ct or "vnd.microsoft.icon" in ct or "image/ico" in ct:
+        return ".ico"
+    if "gif" in ct:
+        return ".gif"
+    path = url.lower().split("?")[0]
+    for e in (".svg", ".png", ".webp", ".jpg", ".jpeg", ".ico", ".gif"):
+        if path.endswith(e):
+            return e
+    return ""
 
 
 def _pick_best_icon(soup: BeautifulSoup, base_url: str) -> str:

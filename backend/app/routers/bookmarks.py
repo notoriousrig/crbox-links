@@ -16,7 +16,7 @@ from app.schemas import (
     BulkUpdate,
     ReorderRequest,
 )
-from app.services.favicon import auto_fetch, resolve_favicon
+from app.services.favicon import auto_fetch, fetch_and_cache, resolve_favicon
 
 
 router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"], dependencies=[RequireUser])
@@ -80,6 +80,8 @@ def create_bookmark(payload: BookmarkCreate, db: Session = Depends(get_db)):
     cached_url = ""
     if payload.favicon_source == "auto":
         cached_url = auto_fetch(payload.url)
+    elif payload.favicon_source == "url" and payload.favicon_ref:
+        cached_url = fetch_and_cache(payload.favicon_ref)
 
     bm = Bookmark(
         category_id=payload.category_id,
@@ -108,16 +110,22 @@ def update_bookmark(bm_id: int, payload: BookmarkUpdate, db: Session = Depends(g
 
     data = payload.model_dump(exclude_unset=True)
     tag_names = data.pop("tag_names", None)
-    refetch_favicon = (
+    refetch_auto = (
         ("url" in data and data["url"] != bm.url and bm.favicon_source == "auto")
         or (data.get("favicon_source") == "auto" and bm.favicon_source != "auto")
+    )
+    recache_url = (
+        data.get("favicon_source") == "url"
+        or ("favicon_ref" in data and bm.favicon_source == "url")
     )
 
     for k, v in data.items():
         setattr(bm, k, v)
 
-    if refetch_favicon:
+    if refetch_auto:
         bm.favicon_cached_url = auto_fetch(bm.url)
+    elif recache_url and bm.favicon_source == "url" and bm.favicon_ref:
+        bm.favicon_cached_url = fetch_and_cache(bm.favicon_ref)
 
     if tag_names is not None:
         _attach_tags(db, bm, tag_names)
@@ -151,7 +159,10 @@ def refresh_favicon(bm_id: int, db: Session = Depends(get_db)):
     bm = db.get(Bookmark, bm_id)
     if bm is None:
         raise HTTPException(404, "Bookmark not found")
-    bm.favicon_cached_url = auto_fetch(bm.url)
+    if bm.favicon_source == "url" and bm.favicon_ref:
+        bm.favicon_cached_url = fetch_and_cache(bm.favicon_ref)
+    else:
+        bm.favicon_cached_url = auto_fetch(bm.url)
     db.commit()
     db.refresh(bm)
     return _serialize(bm)
