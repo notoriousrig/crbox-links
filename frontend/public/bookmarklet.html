@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>crbox-links bookmarklet</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #1f2937; line-height: 1.6; }
+    h1 { margin-bottom: 4px; }
+    .lede { color: #6b7280; }
+    a.bookmarklet { display: inline-block; padding: 10px 16px; background: #6366f1; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; margin: 16px 0; }
+    code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0e1116; color: #e6edf3; }
+      .lede { color: #9ca3af; }
+      code { background: #1f2937; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Add to crbox-links</h1>
+  <p class="lede">Drag this button into your bookmarks bar. Click it on any page to save that page as a bookmark.</p>
+
+  <p>
+    <a class="bookmarklet" href="javascript:(function(){var u=encodeURIComponent(location.href),t=encodeURIComponent(document.title);window.open('https://links.crbox.ca/?share=1&url='+u+'&title='+t,'_blank','noopener');})();">+ Save to crbox-links</a>
+  </p>
+
+  <p>The bookmarklet opens crbox-links in a new tab with the page URL and title pre-filled, ready to pick a category and tags.</p>
+
+  <p>If your browser blocks the drag, right-click the button → <em>Bookmark this link</em>.</p>
+
+  <h2>How it works</h2>
+  <p>The JS payload:</p>
+  <pre><code>javascript:(function(){var u=encodeURIComponent(location.href),t=encodeURIComponent(document.title);window.open('https://links.crbox.ca/?share=1&amp;url='+u+'&amp;title='+t,'_blank','noopener');})();</code></pre>
+  <p>The app reads <code>?share=1&amp;url=…&amp;title=…</code> on load and opens the add-bookmark modal pre-filled.</p>
+</body>
+</html>

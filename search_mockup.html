@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>crbox-links — search UX mockups</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --card: #161b22;
+    --card-border: #21262d;
+    --text: #e6edf3;
+    --text-dim: #7d8590;
+    --accent: #58a6ff;
+    --highlight-bg: rgba(241, 224, 90, 0.30);
+    --highlight-text: #f1e05a;
+    --tag-bg: #1f6feb33;
+    --tag-text: #79c0ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 40px 24px;
+    line-height: 1.5;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  .lede { color: var(--text-dim); margin: 0 0 48px; }
+
+  .option { margin-bottom: 56px; padding-bottom: 56px; border-bottom: 1px solid var(--card-border); }
+  .option:last-child { border-bottom: none; }
+  .option-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .option-tag {
+    background: var(--accent); color: #fff; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .option h2 { font-size: 18px; margin: 0; }
+  .option .desc { color: var(--text-dim); margin: 0 0 20px; font-size: 14px; }
+
+  .app {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 10px; padding: 20px;
+  }
+  .search {
+    display: flex; align-items: center; gap: 10px;
+    background: #0e1116; border: 1px solid var(--card-border);
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 18px;
+  }
+  .search .icon { color: var(--text-dim); }
+  .search input {
+    flex: 1; background: none; border: none; color: var(--text);
+    font-size: 14px; outline: none;
+  }
+  .search .count { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cat {
+    background: #0e1116; border: 1px solid var(--card-border);
+    border-radius: 8px; padding: 14px;
+  }
+  .cat-name {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--text-dim); margin: 0 0 12px; font-weight: 600;
+  }
+  .tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tile {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 6px;
+    background: #161b22; font-size: 13px;
+    transition: all 0.15s;
+  }
+  .tile .ico {
+    width: 22px; height: 22px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0; font-weight: 600;
+  }
+  .tile .ttl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dim { opacity: 0.18; }
+  .hit { box-shadow: 0 0 0 1px var(--accent); background: #1f6feb1a; }
+  mark { background: var(--highlight-bg); color: var(--highlight-text); padding: 0 2px; border-radius: 2px; }
+
+  .list { display: flex; flex-direction: column; gap: 6px; }
+  .row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px; border-radius: 8px;
+    background: #0e1116; border: 1px solid var(--card-border);
+  }
+  .row .ico {
+    width: 34px; height: 34px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0; font-weight: 600;
+  }
+  .row .body { flex: 1; min-width: 0; }
+  .row .ttl { font-size: 14px; font-weight: 500; }
+  .row .url { font-size: 12px; color: var(--text-dim); margin-top: 2px;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .meta { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .chip { font-size: 11px; padding: 2px 8px; border-radius: 10px;
+          background: var(--tag-bg); color: var(--tag-text); }
+  .chip.cat-chip { background: #6e768133; color: var(--text-dim); }
+
+  .c-orange { background: #fb923c33; color: #fb923c; }
+  .c-blue { background: #3b82f633; color: #3b82f6; }
+  .c-purple { background: #a855f733; color: #a855f7; }
+  .c-green { background: #22c55e33; color: #22c55e; }
+  .c-red { background: #ef444433; color: #ef4444; }
+  .c-yellow { background: #eab30833; color: #eab308; }
+  .c-pink { background: #ec489933; color: #ec4899; }
+  .c-cyan { background: #06b6d433; color: #06b6d4; }
+  .c-gray { background: #6e768133; color: #7d8590; }
+
+  .badge-info { color: var(--text-dim); font-size: 12px; margin: 14px 0 0; font-style: italic; }
+  .stage-label {
+    font-size: 11px; color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.6px; margin: 18px 0 6px; font-weight: 600;
+  }
+  .stage-label:first-child { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>crbox-links — search UX mockups</h1>
+  <p class="lede">Same dataset (16 bookmarks across 4 categories), query "rust" (3 matches). Three different things the screen can do while you type.</p>
+
+  <!-- OPTION A -->
+  <div class="option">
+    <div class="option-header">
+      <span class="option-tag">Option A</span>
+      <h2>Fade non-matches in place</h2>
+    </div>
+    <p class="desc">Tile grid stays exactly where it is. Matches glow with a blue outline, non-matches dim to ~18% opacity. You can <em>see where each match lives</em> in the existing layout.</p>
+    <div class="app">
+      <div class="search">
+        <span class="icon">🔍</span>
+        <input value="rust" readonly>
+        <span class="count">3 of 16</span>
+      </div>
+      <div class="grid">
+        <div class="cat">
+          <div class="cat-name">Dev Tools</div>
+          <div class="tile-grid">
+            <div class="tile dim"><div class="ico c-purple">G</div><div class="ttl">GitHub</div></div>
+            <div class="tile hit"><div class="ico c-orange">🦀</div><div class="ttl"><mark>rust</mark>up.rs</div></div>
+            <div class="tile dim"><div class="ico c-blue">V</div><div class="ttl">VS Code</div></div>
+            <div class="tile dim"><div class="ico c-cyan">▲</div><div class="ttl">Vercel</div></div>
+          </div>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Learning</div>
+          <div class="tile-grid">
+            <div class="tile dim"><div class="ico c-orange">M</div><div class="ttl">MDN Web Docs</div></div>
+            <div class="tile hit"><div class="ico c-orange">📚</div><div class="ttl">The <mark>Rust</mark> Book</div></div>
+            <div class="tile dim"><div class="ico c-pink">F</div><div class="ttl">Frontend Masters</div></div>
+            <div class="tile dim"><div class="ico c-green">K</div><div class="ttl">Khan Academy</div></div>
+          </div>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Homelab</div>
+          <div class="tile-grid">
+            <div class="tile dim"><div class="ico c-blue">P</div><div class="ttl">Portainer</div></div>
+            <div class="tile dim"><div class="ico c-pink">T</div><div class="ttl">Traefik docs</div></div>
+            <div class="tile hit"><div class="ico c-red">🥧</div><div class="ttl"><mark>Rust</mark> on RPi</div></div>
+            <div class="tile dim"><div class="ico c-orange">U</div><div class="ttl">Unraid</div></div>
+          </div>
+        </div>
+        <div class="cat">
+          <div class="cat-name">News</div>
+          <div class="tile-grid">
+            <div class="tile dim"><div class="ico c-orange">Y</div><div class="ttl">Hacker News</div></div>
+            <div class="tile dim"><div class="ico c-red">L</div><div class="ttl">Lobsters</div></div>
+            <div class="tile dim"><div class="ico c-yellow">A</div><div class="ttl">Ars Technica</div></div>
+            <div class="tile dim"><div class="ico c-gray">V</div><div class="ttl">The Verge</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="badge-info">Pros: spatial memory preserved ("Rust Book is in Learning"). &nbsp;·&nbsp; Cons: lots of dim noise; eyes have to hunt.</p>
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="option">
+    <div class="option-header">
+      <span class="option-tag">Option B</span>
+      <h2>Collapse to flat result list</h2>
+    </div>
+    <p class="desc">Tile grid disappears while typing. Replaced with a clean Raycast/Spotlight-style list of just the hits, with more detail per row (URL, full tag list, category chip).</p>
+    <div class="app">
+      <div class="search">
+        <span class="icon">🔍</span>
+        <input value="rust" readonly>
+        <span class="count">3 results</span>
+      </div>
+      <div class="list">
+        <div class="row">
+          <div class="ico c-orange">🦀</div>
+          <div class="body">
+            <div class="ttl"><mark>rust</mark>up.rs</div>
+            <div class="url">The Rust toolchain installer · rustup.rs</div>
+          </div>
+          <div class="meta">
+            <span class="chip cat-chip">Dev Tools</span>
+            <span class="chip">rust</span><span class="chip">install</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="ico c-orange">📚</div>
+          <div class="body">
+            <div class="ttl">The <mark>Rust</mark> Programming Language</div>
+            <div class="url">doc.rust-lang.org/book</div>
+          </div>
+          <div class="meta">
+            <span class="chip cat-chip">Learning</span>
+            <span class="chip">rust</span><span class="chip">tutorial</span><span class="chip">book</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="ico c-red">🥧</div>
+          <div class="body">
+            <div class="ttl"><mark>Rust</mark> on Raspberry Pi</div>
+            <div class="url">github.com/rust-embedded/rust-raspberrypi-OS-tutorials</div>
+          </div>
+          <div class="meta">
+            <span class="chip cat-chip">Homelab</span>
+            <span class="chip">rust</span><span class="chip">homelab</span><span class="chip">tutorial</span>
+          </div>
+        </div>
+      </div>
+      <p class="badge-info">Pros: clean, fast scan, more detail per row. &nbsp;·&nbsp; Cons: loses spatial memory; feels like a different app while searching.</p>
+    </div>
+  </div>
+
+  <!-- OPTION C -->
+  <div class="option">
+    <div class="option-header">
+      <span class="option-tag">Option C</span>
+      <h2>Hybrid — auto-switch by result count</h2>
+    </div>
+    <p class="desc">Default to <strong>A</strong> while you've barely typed and matches are still abundant ("lots matches, here's where they live"). Switch to <strong>B</strong> once results drop below ~8 ("you've narrowed it down, here's a focused list"). Same feel as Raycast / ⌘K palettes.</p>
+
+    <div class="stage-label">Typing "ru" — 7 matches → still grid mode</div>
+    <div class="app">
+      <div class="search">
+        <span class="icon">🔍</span>
+        <input value="ru" readonly>
+        <span class="count">7 of 16 · grid mode</span>
+      </div>
+      <div class="grid">
+        <div class="cat">
+          <div class="cat-name">Dev Tools</div>
+          <div class="tile-grid">
+            <div class="tile dim"><div class="ico c-purple">G</div><div class="ttl">GitHub</div></div>
+            <div class="tile hit"><div class="ico c-orange">🦀</div><div class="ttl"><mark>ru</mark>stup.rs</div></div>
+            <div class="tile dim"><div class="ico c-blue">V</div><div class="ttl">VS Code</div></div>
+            <div class="tile dim"><div class="ico c-cyan">▲</div><div class="ttl">Vercel</div></div>
+          </div>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Learning</div>
+          <div class="tile-grid">
+            <div class="tile dim"><div class="ico c-orange">M</div><div class="ttl">MDN Web Docs</div></div>
+            <div class="tile hit"><div class="ico c-orange">📚</div><div class="ttl">The <mark>Ru</mark>st Book</div></div>
+            <div class="tile dim"><div class="ico c-pink">F</div><div class="ttl">Frontend Masters</div></div>
+            <div class="tile dim"><div class="ico c-green">K</div><div class="ttl">Khan Academy</div></div>
+          </div>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Homelab</div>
+          <div class="tile-grid">
+            <div class="tile dim"><div class="ico c-blue">P</div><div class="ttl">Portainer</div></div>
+            <div class="tile hit"><div class="ico c-pink">T</div><div class="ttl">T<mark>ru</mark>eNAS</div></div>
+            <div class="tile hit"><div class="ico c-red">🥧</div><div class="ttl"><mark>Ru</mark>st on RPi</div></div>
+            <div class="tile hit"><div class="ico c-orange">U</div><div class="ttl">Un<mark>ru</mark>id</div></div>
+          </div>
+        </div>
+        <div class="cat">
+          <div class="cat-name">News</div>
+          <div class="tile-grid">
+            <div class="tile hit"><div class="ico c-yellow">A</div><div class="ttl">A<mark>ru</mark>s Technica</div></div>
+            <div class="tile dim"><div class="ico c-red">L</div><div class="ttl">Lobsters</div></div>
+            <div class="tile dim"><div class="ico c-orange">Y</div><div class="ttl">Hacker News</div></div>
+            <div class="tile hit"><div class="ico c-gray">R</div><div class="ttl">Reute<mark>rs</mark></div></div>
+          </div>
+        </div>
+      </div>
+      <p class="badge-info">7 hits ≥ threshold of 8 — stays in <strong>grid mode</strong>.</p>
+    </div>
+
+    <div class="stage-label">One more keystroke "rust" — 3 matches → flips to list mode</div>
+    <div class="app">
+      <div class="search">
+        <span class="icon">🔍</span>
+        <input value="rust" readonly>
+        <span class="count">3 results · list mode</span>
+      </div>
+      <div class="list">
+        <div class="row">
+          <div class="ico c-orange">🦀</div>
+          <div class="body">
+            <div class="ttl"><mark>rust</mark>up.rs</div>
+            <div class="url">The Rust toolchain installer · rustup.rs</div>
+          </div>
+          <div class="meta">
+            <span class="chip cat-chip">Dev Tools</span>
+            <span class="chip">rust</span><span class="chip">install</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="ico c-orange">📚</div>
+          <div class="body">
+            <div class="ttl">The <mark>Rust</mark> Programming Language</div>
+            <div class="url">doc.rust-lang.org/book</div>
+          </div>
+          <div class="meta">
+            <span class="chip cat-chip">Learning</span>
+            <span class="chip">rust</span><span class="chip">tutorial</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="ico c-red">🥧</div>
+          <div class="body">
+            <div class="ttl"><mark>Rust</mark> on Raspberry Pi</div>
+            <div class="url">github.com/rust-embedded/...</div>
+          </div>
+          <div class="meta">
+            <span class="chip cat-chip">Homelab</span>
+            <span class="chip">rust</span><span class="chip">homelab</span>
+          </div>
+        </div>
+      </div>
+      <p class="badge-info">3 hits &lt; threshold — flips to <strong>list mode</strong> automatically.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

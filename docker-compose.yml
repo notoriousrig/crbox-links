@@ -1,0 +1,66 @@
+# crbox-links docker compose
+#
+# Services:
+#   backend     — FastAPI app, SQLite at ./data/links.db
+#   frontend    — nginx serving React build + proxying /api -> backend
+#
+# Edge routing on NAS3:
+#   The existing `networking` stack already runs cloudflared + traefik on the
+#   external network `proxy`. Cloudflared tunnels traffic to traefik:8443
+#   (entrypoint `tunnel`) and traefik dispatches by Host(). We attach
+#   `frontend` to `proxy` and declare traefik labels routing
+#   links.crbox.ca through the `tunnel` entrypoint.
+#
+#   Auth is Cloudflare Access at the edge — the backend verifies the
+#   Cf-Access-Jwt-Assertion JWT directly. We skip the `protected@docker`
+#   middleware chain (which includes tinyauth).
+#
+# Local dev:
+#   cp .env.example .env  &&  docker compose up --build
+#   Frontend on http://localhost:5173 (vite dev) or http://localhost:8080
+#   when running the built image, backend on http://localhost:8000.
+#
+# No ports are published to the host in production.
+
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: sqlite:////data/links.db
+      DATA_DIR: /data
+      FAVICON_DIR: /data/favicons
+      CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LINKCHECK_HOUR: ${LINKCHECK_HOUR:-3}
+      BACKUP_HOUR: ${BACKUP_HOUR:-4}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+    volumes:
+      - ./data:/data
+    networks:
+      - app
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - app
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.crbox-links.rule=Host(`links.crbox.ca`)"
+      - "traefik.http.routers.crbox-links.entrypoints=tunnel"
+      - "traefik.http.services.crbox-links.loadbalancer.server.port=80"
+
+networks:
+  app:
+    driver: bridge
+  proxy:
+    external: true

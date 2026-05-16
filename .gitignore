@@ -1,0 +1,33 @@
+# Secrets
+.env
+.env.local
+
+# Local-only scratch & raw import sources (kept on disk, never committed)
+dryrun_importers.py
+.venv-dryrun/
+URLs.zip
+booky_backup_*.html
+
+# Runtime data — bind-mounted into the backend
+data/
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.log
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
