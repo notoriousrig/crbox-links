@@ -114,18 +114,28 @@ export function BookmarkModal({
 
   if (!open) return null;
 
+  function canSave() {
+    return !save.isPending && !!url.trim() && !!categoryId;
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (canSave()) save.mutate();
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
-      <div
+      <form
+        onSubmit={handleSubmit}
         className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-2xl shadow-modal p-6 max-h-[90vh] overflow-y-auto scrollbar-thin"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{existing ? "Edit bookmark" : "Add bookmark"}</h2>
-          <button onClick={onClose} className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <button type="button" onClick={onClose} className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800">
             <X size={18} />
           </button>
         </div>
@@ -218,6 +228,7 @@ export function BookmarkModal({
           <div>
             {existing && (
               <button
+                type="button"
                 onClick={() => {
                   if (confirm("Delete this bookmark?")) del.mutate();
                 }}
@@ -230,21 +241,22 @@ export function BookmarkModal({
           </div>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-sm hover:bg-zinc-200 dark:hover:bg-zinc-700"
             >
               Cancel
             </button>
             <button
-              onClick={() => save.mutate()}
-              disabled={save.isPending || !url.trim() || !categoryId}
+              type="submit"
+              disabled={!canSave()}
               className="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm hover:bg-brand-600 disabled:opacity-50"
             >
               {save.isPending ? "Saving…" : "Save"}
             </button>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

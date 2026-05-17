@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.auth import CurrentUser, RequireUser
 from app.config import settings
-from app.routers import bookmarks, categories, favicons, imports_, settings_, tags, export
+from app.routers import admin, bookmarks, categories, favicons, imports_, settings_, tags, export
 from app.scheduler import shutdown_scheduler, start_scheduler
 
 
@@ -52,6 +52,7 @@ app.include_router(favicons.router)
 app.include_router(imports_.router)
 app.include_router(export.router)
 app.include_router(settings_.router)
+app.include_router(admin.router)
 
 # Serve uploaded favicons under /api/favicons/files/<file>
 app.mount(

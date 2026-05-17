@@ -73,6 +73,12 @@ export const api = {
       "/favicons/warm-cache",
       { method: "POST" },
     ),
+
+  fixUrls: () =>
+    req<{ examined: number; fixed: number; samples: Array<{ id: number; before: string; after: string }> }>(
+      "/admin/fix-urls",
+      { method: "POST" },
+    ),
   uploadFavicon: async (bookmarkId: number, file: File) => {
     const form = new FormData();
     form.append("file", file);

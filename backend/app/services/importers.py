@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Bookmark, Category, Tag
 from app.schemas import ImportResult
+from app.services.url_normalize import normalize_url
 
 
 log = logging.getLogger(__name__)
@@ -186,10 +187,12 @@ def bulk_insert(db: Session, source: str, items: Iterable[dict]) -> ImportResult
     for it in items:
         try:
             cat_name = (it.get("category") or DEFAULT_CATEGORY).strip()[:120] or DEFAULT_CATEGORY
-            url = (it.get("url") or "").strip()
-            if not url:
+            raw_url = (it.get("url") or "").strip()
+            if not raw_url:
                 continue
-            title = (it.get("title") or url).strip()[:500] or url
+            raw_title = (it.get("title") or raw_url).strip()[:500] or raw_url
+            url = normalize_url(raw_url, raw_title)
+            title = raw_title
 
             cat = cat_by_name.get(cat_name)
             if cat is None:

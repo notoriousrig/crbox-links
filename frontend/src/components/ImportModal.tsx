@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, X } from "lucide-react";
+import { Download, Loader2, Wrench, X } from "lucide-react";
 
 import { api } from "../api";
 import type { ImportResult } from "../types";
@@ -50,6 +50,11 @@ export function ImportModal({ open, onClose }: Props) {
 
   const warm = useMutation({
     mutationFn: () => api.warmFaviconCache(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["bookmarks"] }),
+  });
+
+  const fix = useMutation({
+    mutationFn: () => api.fixUrls(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bookmarks"] }),
   });
 
@@ -128,6 +133,47 @@ export function ImportModal({ open, onClose }: Props) {
         )}
 
         <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+          <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  <Wrench size={14} /> Fix broken URLs
+                </div>
+                <div className="text-xs text-zinc-500 mt-0.5">
+                  Add <code>https:</code> prefix to bookmarks with <code>//host/path</code> or scheme-less URLs. Recovers booky.io internal refs by reading the title.
+                </div>
+              </div>
+              <button
+                onClick={() => fix.mutate()}
+                disabled={fix.isPending}
+                className="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm hover:bg-brand-600 disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+              >
+                {fix.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+                {fix.isPending ? "Fixing…" : "Fix URLs"}
+              </button>
+            </div>
+            {fix.data && (
+              <div className="text-xs mt-2">
+                <div className="text-green-700 dark:text-green-400">
+                  ✓ Fixed {fix.data.fixed} of {fix.data.examined} bookmarks.
+                </div>
+                {fix.data.samples.length > 0 && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-zinc-500">First {fix.data.samples.length} examples</summary>
+                    <ul className="mt-1 space-y-0.5 font-mono text-[11px]">
+                      {fix.data.samples.map((s) => (
+                        <li key={s.id} className="break-all">
+                          <span className="text-zinc-400">#{s.id}:</span> {s.before} <span className="text-zinc-400">→</span> {s.after}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
+            {fix.isError && <div className="text-xs text-red-600">{(fix.error as Error).message}</div>}
+          </div>
+
           <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3">
             <div className="flex items-center justify-between mb-2">
               <div>
