@@ -14,15 +14,16 @@ export interface ParsedQuery {
   flags: string[];
 }
 
-const OP_RE = /\b(tag|cat|is):([^\s]+)/g;
+// Match `tag:foo`, `cat:Dev Tools` (quoted), `cat:#42` (by id), `is:broken`
+const OP_RE = /\b(tag|cat|is):("([^"]+)"|([^\s]+))/g;
 
 export function parseQuery(input: string): ParsedQuery {
   const tags: string[] = [];
   const cats: string[] = [];
   const flags: string[] = [];
   const free = input
-    .replace(OP_RE, (_m, op, val) => {
-      const v = val.toLowerCase();
+    .replace(OP_RE, (_m, op, _whole, quoted, bare) => {
+      const v = (quoted ?? bare).toLowerCase();
       if (op === "tag") tags.push(v);
       else if (op === "cat") cats.push(v);
       else if (op === "is") flags.push(v);
@@ -93,8 +94,13 @@ export function runSearch(
   if (parsed.cats.length) {
     const ids = new Set<number>();
     for (const name of parsed.cats) {
-      const id = catByName.get(name);
-      if (id !== undefined) ids.add(id);
+      if (name.startsWith("#")) {
+        const n = Number(name.slice(1));
+        if (Number.isFinite(n)) ids.add(n);
+      } else {
+        const id = catByName.get(name);
+        if (id !== undefined) ids.add(id);
+      }
     }
     candidates = candidates.filter((c) => ids.has(c.bookmark.category_id));
   }
@@ -103,6 +109,20 @@ export function runSearch(
       const s = c.bookmark.last_check_status;
       return s !== null && (s === 0 || s >= 400);
     });
+  }
+  if (parsed.flags.includes("recent")) {
+    const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
+    candidates = candidates.filter(
+      (c) => new Date(c.bookmark.created_at).getTime() >= cutoff,
+    );
+  }
+  if (parsed.flags.includes("popular")) {
+    const top = [...bookmarks]
+      .filter((b) => b.click_count > 0)
+      .sort((a, b) => b.click_count - a.click_count)
+      .slice(0, 20);
+    const topIds = new Set(top.map((b) => b.id));
+    candidates = candidates.filter((c) => topIds.has(c.bookmark.id));
   }
   return candidates;
 }

@@ -11,7 +11,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
-import { Bookmark as BookmarkIcon, Download, FolderPlus, Plus, Settings, Upload } from "lucide-react";
+import { Bookmark as BookmarkIcon, Download, FolderPlus, Menu, Plus, Settings, Upload, X } from "lucide-react";
 
 import { api } from "./api";
 import type { Bookmark, Category } from "./types";
@@ -25,6 +25,7 @@ import { CategoryModal } from "./components/CategoryModal";
 import { ImportModal } from "./components/ImportModal";
 import { CommandPalette } from "./components/CommandPalette";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { Sidebar } from "./components/Sidebar";
 
 export default function App() {
   const qc = useQueryClient();
@@ -48,6 +49,12 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  function scrollToCategory(categoryId: number) {
+    const el = document.getElementById(`cat-${categoryId}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   // PWA share-target intake: ?share=1&url=...&title=...
   useEffect(() => {
@@ -217,7 +224,14 @@ export default function App() {
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-30 bg-zinc-50/80 dark:bg-zinc-950/80 backdrop-blur border-b border-zinc-200 dark:border-zinc-800">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="px-4 py-3 flex items-center gap-3">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="lg:hidden p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800"
+            title="Open menu"
+          >
+            <Menu size={18} />
+          </button>
           <BookmarkIcon size={20} className="text-brand-500" />
           <h1 className="font-semibold text-lg">links</h1>
           <div className="flex-1 max-w-2xl mx-auto">
@@ -272,7 +286,7 @@ export default function App() {
 
         {selectMode && (
           <div className="bg-brand-500 text-white text-sm">
-            <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">
+            <div className="px-4 py-2 flex items-center gap-3">
               <span className="font-medium">{selectedIds.size} selected</span>
               <button
                 disabled={!selectedIds.size}
@@ -292,62 +306,101 @@ export default function App() {
         )}
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {hits ? (
-          <SearchResults
-            hits={hits}
+      <div className="flex">
+        {/* Persistent sidebar on lg+ */}
+        <div className="hidden lg:block sticky top-[57px] h-[calc(100vh-57px)]">
+          <Sidebar
             categories={categories}
+            tags={tags}
+            bookmarks={bookmarks}
             query={query}
-            onEdit={(b) =>
-              setBookmarkModal({ open: true, existing: b, defaultCategoryId: b.category_id })
-            }
+            setQuery={setQuery}
+            onScrollToCategory={scrollToCategory}
           />
-        ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext
-              items={categories.map((c) => `c:${c.id}`)}
-              strategy={rectSortingStrategy}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {categories.map((c) => (
-                  <CategoryCard
-                    key={c.id}
-                    category={c}
-                    bookmarks={bookmarksByCat.get(c.id) ?? []}
-                    onEditCategory={(cat) => setCategoryModal({ open: true, existing: cat })}
-                    onAddBookmark={(catId) =>
-                      setBookmarkModal({ open: true, existing: null, defaultCategoryId: catId })
-                    }
-                    onEditBookmark={(b) =>
-                      setBookmarkModal({ open: true, existing: b, defaultCategoryId: b.category_id })
-                    }
-                    onToggleCollapse={toggleCollapse}
-                    selectedIds={selectedIds}
-                    selectMode={selectMode}
-                    onToggleSelect={toggleSelect}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        )}
+        </div>
 
-        {categories.length === 0 && (
-          <div className="text-center py-24 text-zinc-400">
-            <p className="text-lg mb-2">No bookmarks yet.</p>
-            <p className="text-sm">
-              Add a category and bookmark, or use{" "}
+        {/* Drawer overlay on smaller screens */}
+        {drawerOpen && (
+          <div className="lg:hidden fixed inset-0 z-40 flex">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
+            <div className="relative h-full bg-white dark:bg-zinc-900 shadow-xl">
               <button
-                onClick={() => setImportOpen(true)}
-                className="text-brand-500 hover:underline"
+                onClick={() => setDrawerOpen(false)}
+                className="absolute top-2 right-2 z-10 p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
-                import
-              </button>{" "}
-              to bring in an existing set.
-            </p>
+                <X size={16} />
+              </button>
+              <Sidebar
+                categories={categories}
+                tags={tags}
+                bookmarks={bookmarks}
+                query={query}
+                setQuery={setQuery}
+                onScrollToCategory={scrollToCategory}
+                onCloseDrawer={() => setDrawerOpen(false)}
+              />
+            </div>
           </div>
         )}
-      </main>
+
+        <main className="flex-1 min-w-0 px-4 py-6">
+          {hits ? (
+            <SearchResults
+              hits={hits}
+              categories={categories}
+              query={query}
+              onEdit={(b) =>
+                setBookmarkModal({ open: true, existing: b, defaultCategoryId: b.category_id })
+              }
+            />
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext
+                items={categories.map((c) => `c:${c.id}`)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+                  {categories.map((c) => (
+                    <div key={c.id} id={`cat-${c.id}`} className="scroll-mt-20">
+                      <CategoryCard
+                        category={c}
+                        bookmarks={bookmarksByCat.get(c.id) ?? []}
+                        onEditCategory={(cat) => setCategoryModal({ open: true, existing: cat })}
+                        onAddBookmark={(catId) =>
+                          setBookmarkModal({ open: true, existing: null, defaultCategoryId: catId })
+                        }
+                        onEditBookmark={(b) =>
+                          setBookmarkModal({ open: true, existing: b, defaultCategoryId: b.category_id })
+                        }
+                        onToggleCollapse={toggleCollapse}
+                        selectedIds={selectedIds}
+                        selectMode={selectMode}
+                        onToggleSelect={toggleSelect}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+
+          {categories.length === 0 && (
+            <div className="text-center py-24 text-zinc-400">
+              <p className="text-lg mb-2">No bookmarks yet.</p>
+              <p className="text-sm">
+                Add a category and bookmark, or use{" "}
+                <button
+                  onClick={() => setImportOpen(true)}
+                  className="text-brand-500 hover:underline"
+                >
+                  import
+                </button>{" "}
+                to bring in an existing set.
+              </p>
+            </div>
+          )}
+        </main>
+      </div>
 
       <BookmarkModal
         open={bookmarkModal.open}
