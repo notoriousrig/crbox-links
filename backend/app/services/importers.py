@@ -165,12 +165,20 @@ def parse_url_zip(data: bytes) -> list[dict]:
 # ---------- shared insert ----------
 
 def bulk_insert(db: Session, source: str, items: Iterable[dict]) -> ImportResult:
-    """Dedupe by (category, url). Create categories/tags as needed."""
+    """Dedupe by (category, url). Build nested categories from " / "-separated
+    names so 'AI / General' becomes parent 'AI' with child 'General'.
+    """
     items = list(items)
-    cat_by_name: dict[str, Category] = {c.name: c for c in db.query(Category).all()}
+    # Key categories by (parent_id, name) so identical leaf names under
+    # different parents stay distinct.
+    cat_by_key: dict[tuple[int | None, str], Category] = {
+        (c.parent_id, c.name): c for c in db.query(Category).all()
+    }
     tag_by_name: dict[str, Tag] = {t.name: t for t in db.query(Tag).all()}
 
-    next_cat_sort = (max((c.sort_order for c in cat_by_name.values()), default=-100) + 100)
+    next_top_sort = (
+        max((c.sort_order for c in cat_by_key.values() if c.parent_id is None), default=-100) + 100
+    )
     cat_next_bookmark_sort: dict[int, int] = {}
 
     created_cats = 0
@@ -178,15 +186,41 @@ def bulk_insert(db: Session, source: str, items: Iterable[dict]) -> ImportResult
     skipped = 0
     errors: list[str] = []
 
-    # Preload existing (category_id, url) pairs to dedupe
     existing = {
         (row.category_id, row.url)
         for row in db.query(Bookmark.category_id, Bookmark.url).all()
     }
 
+    def find_or_create_path(path: list[str]) -> Category:
+        nonlocal created_cats, next_top_sort
+        parent_id: int | None = None
+        leaf: Category | None = None
+        for seg in path:
+            seg = seg[:120]
+            key = (parent_id, seg)
+            cat = cat_by_key.get(key)
+            if cat is None:
+                if parent_id is None:
+                    sort_order = next_top_sort
+                    next_top_sort += 100
+                else:
+                    sort_order = 100  # rough; reorder via UI
+                cat = Category(name=seg, parent_id=parent_id, sort_order=sort_order)
+                db.add(cat)
+                db.flush()
+                cat_by_key[key] = cat
+                created_cats += 1
+            parent_id = cat.id
+            leaf = cat
+        assert leaf is not None
+        return leaf
+
     for it in items:
         try:
-            cat_name = (it.get("category") or DEFAULT_CATEGORY).strip()[:120] or DEFAULT_CATEGORY
+            cat_raw = (it.get("category") or DEFAULT_CATEGORY).strip() or DEFAULT_CATEGORY
+            path = [s.strip() for s in cat_raw.split(" / ") if s.strip()]
+            if not path:
+                path = [DEFAULT_CATEGORY]
             raw_url = (it.get("url") or "").strip()
             if not raw_url:
                 continue
@@ -194,20 +228,14 @@ def bulk_insert(db: Session, source: str, items: Iterable[dict]) -> ImportResult
             url = normalize_url(raw_url, raw_title)
             title = raw_title
 
-            cat = cat_by_name.get(cat_name)
-            if cat is None:
-                cat = Category(name=cat_name, sort_order=next_cat_sort)
-                next_cat_sort += 100
-                db.add(cat)
-                db.flush()
-                cat_by_name[cat_name] = cat
-                created_cats += 1
+            cat = find_or_create_path(path)
 
             if (cat.id, url) in existing:
                 skipped += 1
                 continue
 
-            sort_order = cat_next_bookmark_sort.get(cat.id)
+            cat_next_sort = cat_next_bookmark_sort.get(cat.id)
+            sort_order = cat_next_sort
             if sort_order is None:
                 last = (
                     db.query(Bookmark.sort_order)
@@ -215,7 +243,7 @@ def bulk_insert(db: Session, source: str, items: Iterable[dict]) -> ImportResult
                     .order_by(Bookmark.sort_order.desc())
                     .first()
                 )
-                sort_order = (last[0] if last else -100) + 100
+                sort_order = ((last[0] if last else -100) + 100)
             cat_next_bookmark_sort[cat.id] = sort_order + 100
 
             bm = Bookmark(

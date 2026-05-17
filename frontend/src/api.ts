@@ -79,6 +79,14 @@ export const api = {
       "/admin/fix-urls",
       { method: "POST" },
     ),
+
+  splitNestedCategories: () =>
+    req<{
+      examined: number;
+      parents_created: number;
+      children_renamed: number;
+      samples: Array<{ id: number; before: string; after: string; parent_id: number | null }>;
+    }>("/admin/split-nested-categories", { method: "POST" }),
   uploadFavicon: async (bookmarkId: number, file: File) => {
     const form = new FormData();
     form.append("file", file);

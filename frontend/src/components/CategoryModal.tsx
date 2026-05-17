@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, X } from "lucide-react";
 
@@ -10,25 +10,53 @@ interface Props {
   open: boolean;
   onClose: () => void;
   existing: Category | null;
+  allCategories: Category[];
+  defaultParentId?: number | null;
 }
 
-export function CategoryModal({ open, onClose, existing }: Props) {
+export function CategoryModal({ open, onClose, existing, allCategories, defaultParentId }: Props) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("");
   const [color, setColor] = useState("gray");
+  const [parentId, setParentId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setName(existing?.name ?? "");
     setIcon(existing?.icon ?? "");
     setColor(existing?.color ?? "gray");
-  }, [open, existing]);
+    setParentId(existing?.parent_id ?? defaultParentId ?? null);
+  }, [open, existing, defaultParentId]);
+
+  // Build the list of valid parent options: top-level only (we limit depth to 2)
+  // and exclude self/descendants when editing
+  const parentOptions = useMemo(() => {
+    const banned = new Set<number>();
+    if (existing) {
+      banned.add(existing.id);
+      // recursively ban descendants
+      const stack = [existing.id];
+      while (stack.length) {
+        const id = stack.pop()!;
+        for (const c of allCategories) {
+          if (c.parent_id === id && !banned.has(c.id)) {
+            banned.add(c.id);
+            stack.push(c.id);
+          }
+        }
+      }
+    }
+    return allCategories
+      .filter((c) => c.parent_id === null && !banned.has(c.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allCategories, existing]);
 
   const save = useMutation({
     mutationFn: async () => {
-      if (existing) return api.updateCategory(existing.id, { name, icon, color });
-      return api.createCategory({ name, icon, color });
+      const payload = { name, icon, color, parent_id: parentId };
+      if (existing) return api.updateCategory(existing.id, payload);
+      return api.createCategory(payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] });
@@ -86,6 +114,22 @@ export function CategoryModal({ open, onClose, existing }: Props) {
               autoFocus
               className="w-full mt-1 px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm"
             />
+          </div>
+          <div>
+            <label className="text-xs uppercase tracking-wide text-zinc-500">Parent category</label>
+            <select
+              value={parentId ?? ""}
+              onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full mt-1 px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm"
+            >
+              <option value="">(top level)</option>
+              {parentOptions.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-zinc-500 mt-1">
+              Pick a top-level category to nest under, or leave at "(top level)".
+            </p>
           </div>
           <div>
             <label className="text-xs uppercase tracking-wide text-zinc-500">Icon (emoji)</label>

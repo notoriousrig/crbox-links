@@ -34,6 +34,7 @@ class CategoryBase(BaseModel):
     color: str = "gray"
     icon: str = ""
     collapsed: bool = False
+    parent_id: int | None = None
 
 
 class CategoryCreate(CategoryBase):
@@ -46,6 +47,7 @@ class CategoryUpdate(BaseModel):
     icon: str | None = None
     collapsed: bool | None = None
     sort_order: int | None = None
+    parent_id: int | None = None
 
 
 class CategoryOut(CategoryBase):

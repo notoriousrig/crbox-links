@@ -92,14 +92,26 @@ export function runSearch(
     });
   }
   if (parsed.cats.length) {
-    const ids = new Set<number>();
+    const seeds = new Set<number>();
     for (const name of parsed.cats) {
       if (name.startsWith("#")) {
         const n = Number(name.slice(1));
-        if (Number.isFinite(n)) ids.add(n);
+        if (Number.isFinite(n)) seeds.add(n);
       } else {
         const id = catByName.get(name);
-        if (id !== undefined) ids.add(id);
+        if (id !== undefined) seeds.add(id);
+      }
+    }
+    // Expand to all descendants so filtering a parent includes its children
+    const ids = new Set<number>(seeds);
+    const stack = [...seeds];
+    while (stack.length) {
+      const id = stack.pop()!;
+      for (const c of categories) {
+        if (c.parent_id === id && !ids.has(c.id)) {
+          ids.add(c.id);
+          stack.push(c.id);
+        }
       }
     }
     candidates = candidates.filter((c) => ids.has(c.bookmark.category_id));

@@ -34,6 +34,11 @@ class Category(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("category.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     color: Mapped[str] = mapped_column(String(20), default="gray", nullable=False)
     icon: Mapped[str] = mapped_column(String(40), default="", nullable=False)  # emoji or library key
@@ -44,6 +49,17 @@ class Category(Base):
         back_populates="category",
         cascade="all, delete-orphan",
         order_by="Bookmark.sort_order",
+    )
+    parent: Mapped["Category | None"] = relationship(
+        "Category",
+        remote_side="Category.id",
+        back_populates="children",
+    )
+    children: Mapped[list["Category"]] = relationship(
+        "Category",
+        back_populates="parent",
+        cascade="all, delete-orphan",
+        order_by="Category.sort_order",
     )
 
 

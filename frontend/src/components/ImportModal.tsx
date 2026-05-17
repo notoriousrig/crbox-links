@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, Wrench, X } from "lucide-react";
+import { Download, Loader2, Split, Wrench, X } from "lucide-react";
 
 import { api } from "../api";
 import type { ImportResult } from "../types";
@@ -57,6 +57,11 @@ export function ImportModal({ open, onClose }: Props) {
   const fix = useMutation({
     mutationFn: () => api.fixUrls(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bookmarks"] }),
+  });
+
+  const split = useMutation({
+    mutationFn: () => api.splitNestedCategories(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
   });
 
   useEscape(open, onClose);
@@ -136,6 +141,45 @@ export function ImportModal({ open, onClose }: Props) {
         )}
 
         <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+          <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  <Split size={14} /> Split nested categories
+                </div>
+                <div className="text-xs text-zinc-500 mt-0.5">
+                  Convert flat names like <code>AI / General</code> into parent <code>AI</code> + child <code>General</code>. Safe to re-run.
+                </div>
+              </div>
+              <button
+                onClick={() => split.mutate()}
+                disabled={split.isPending}
+                className="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm hover:bg-brand-600 disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+              >
+                {split.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+                {split.isPending ? "Splitting…" : "Split"}
+              </button>
+            </div>
+            {split.data && (
+              <div className="text-xs mt-2 text-green-700 dark:text-green-400">
+                ✓ Created {split.data.parents_created} parents · renamed {split.data.children_renamed} children
+                {split.data.samples.length > 0 && (
+                  <details className="mt-1 text-zinc-500">
+                    <summary className="cursor-pointer">First {split.data.samples.length} examples</summary>
+                    <ul className="mt-1 space-y-0.5 font-mono text-[11px]">
+                      {split.data.samples.map((s) => (
+                        <li key={s.id}>
+                          <span className="text-zinc-400">#{s.id}:</span> {s.before} <span className="text-zinc-400">→</span> {s.after}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
+            {split.isError && <div className="text-xs text-red-600">{(split.error as Error).message}</div>}
+          </div>
+
           <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3">
             <div className="flex items-center justify-between mb-2">
               <div>

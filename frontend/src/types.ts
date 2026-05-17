@@ -13,6 +13,7 @@ export interface Category {
   icon: string;
   collapsed: boolean;
   sort_order: number;
+  parent_id: number | null;
 }
 
 export interface Bookmark {

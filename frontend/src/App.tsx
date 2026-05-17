@@ -26,6 +26,7 @@ import { ImportModal } from "./components/ImportModal";
 import { CommandPalette } from "./components/CommandPalette";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { Sidebar } from "./components/Sidebar";
+import { ParentSection } from "./components/ParentSection";
 
 export default function App() {
   const qc = useQueryClient();
@@ -41,9 +42,10 @@ export default function App() {
     prefillUrl?: string;
     prefillTitle?: string;
   }>({ open: false, existing: null, defaultCategoryId: null });
-  const [categoryModal, setCategoryModal] = useState<{ open: boolean; existing: Category | null }>({
+  const [categoryModal, setCategoryModal] = useState<{ open: boolean; existing: Category | null; defaultParentId: number | null }>({
     open: false,
     existing: null,
+    defaultParentId: null,
   });
   const [importOpen, setImportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -107,6 +109,24 @@ export default function App() {
     return map;
   }, [bookmarks]);
 
+  const topLevelCategories = useMemo(
+    () => categories.filter((c) => c.parent_id === null).sort((a, b) => a.sort_order - b.sort_order),
+    [categories],
+  );
+
+  const childrenByParent = useMemo(() => {
+    const m = new Map<number, Category[]>();
+    for (const c of categories) {
+      if (c.parent_id !== null) {
+        const arr = m.get(c.parent_id) ?? [];
+        arr.push(c);
+        m.set(c.parent_id, arr);
+      }
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.sort_order - b.sort_order);
+    return m;
+  }, [categories]);
+
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
@@ -167,10 +187,18 @@ export default function App() {
     const overId = String(over.id);
 
     if (activeId.startsWith("c:") && overId.startsWith("c:")) {
-      const oldIndex = categories.findIndex((c) => `c:${c.id}` === activeId);
-      const newIndex = categories.findIndex((c) => `c:${c.id}` === overId);
+      const activeCat = categories.find((c) => `c:${c.id}` === activeId);
+      const overCat = categories.find((c) => `c:${c.id}` === overId);
+      if (!activeCat || !overCat) return;
+      // Only allow reorder within the same parent
+      if (activeCat.parent_id !== overCat.parent_id) return;
+      const siblings = categories
+        .filter((c) => c.parent_id === activeCat.parent_id)
+        .sort((a, b) => a.sort_order - b.sort_order);
+      const oldIndex = siblings.findIndex((c) => c.id === activeCat.id);
+      const newIndex = siblings.findIndex((c) => c.id === overCat.id);
       if (oldIndex < 0 || newIndex < 0) return;
-      const reordered = arrayMove(categories, oldIndex, newIndex);
+      const reordered = arrayMove(siblings, oldIndex, newIndex);
       const items = reordered.map((c, i) => ({ id: c.id, sort_order: (i + 1) * 100 }));
       reorderCats.mutate(items);
       return;
@@ -250,7 +278,7 @@ export default function App() {
             <Plus size={18} />
           </button>
           <button
-            onClick={() => setCategoryModal({ open: true, existing: null })}
+            onClick={() => setCategoryModal({ open: true, existing: null, defaultParentId: null })}
             className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800"
             title="New category"
           >
@@ -356,16 +384,48 @@ export default function App() {
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext
-                items={categories.map((c) => `c:${c.id}`)}
+                items={topLevelCategories.map((c) => `c:${c.id}`)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
-                  {categories.map((c) => (
-                    <div key={c.id} id={`cat-${c.id}`} className="scroll-mt-20">
-                      <CategoryCard
-                        category={c}
-                        bookmarks={bookmarksByCat.get(c.id) ?? []}
-                        onEditCategory={(cat) => setCategoryModal({ open: true, existing: cat })}
+                <div className="space-y-8">
+                  {topLevelCategories.map((parent) => {
+                    const children = childrenByParent.get(parent.id) ?? [];
+                    const direct = bookmarksByCat.get(parent.id) ?? [];
+                    if (children.length === 0) {
+                      // Leaf at top level — render as a regular card (single-column row)
+                      return (
+                        <div key={parent.id} id={`cat-${parent.id}`} className="scroll-mt-20">
+                          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+                            <CategoryCard
+                              category={parent}
+                              bookmarks={direct}
+                              onEditCategory={(cat) => setCategoryModal({ open: true, existing: cat, defaultParentId: cat.parent_id })}
+                              onAddBookmark={(catId) =>
+                                setBookmarkModal({ open: true, existing: null, defaultCategoryId: catId })
+                              }
+                              onEditBookmark={(b) =>
+                                setBookmarkModal({ open: true, existing: b, defaultCategoryId: b.category_id })
+                              }
+                              onToggleCollapse={toggleCollapse}
+                              selectedIds={selectedIds}
+                              selectMode={selectMode}
+                              onToggleSelect={toggleSelect}
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <ParentSection
+                        key={parent.id}
+                        parent={parent}
+                        childCategories={children}
+                        directBookmarks={direct}
+                        bookmarksByCat={bookmarksByCat}
+                        onEditCategory={(cat) => setCategoryModal({ open: true, existing: cat, defaultParentId: cat.parent_id })}
+                        onAddSubcategory={(parentId) =>
+                          setCategoryModal({ open: true, existing: null, defaultParentId: parentId })
+                        }
                         onAddBookmark={(catId) =>
                           setBookmarkModal({ open: true, existing: null, defaultCategoryId: catId })
                         }
@@ -377,8 +437,8 @@ export default function App() {
                         selectMode={selectMode}
                         onToggleSelect={toggleSelect}
                       />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </SortableContext>
             </DndContext>
@@ -416,6 +476,8 @@ export default function App() {
         open={categoryModal.open}
         onClose={() => setCategoryModal((s) => ({ ...s, open: false }))}
         existing={categoryModal.existing}
+        allCategories={categories}
+        defaultParentId={categoryModal.defaultParentId}
       />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
       {paletteOpen && (
