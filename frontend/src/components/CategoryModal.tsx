@@ -4,6 +4,7 @@ import { Trash2, X } from "lucide-react";
 
 import { api } from "../api";
 import type { Category } from "../types";
+import { useEscape } from "../hooks/useEscape";
 
 interface Props {
   open: boolean;
@@ -46,20 +47,32 @@ export function CategoryModal({ open, onClose, existing }: Props) {
     },
   });
 
+  useEscape(open, onClose);
+
   if (!open) return null;
+
+  function canSave() {
+    return !save.isPending && !!name.trim();
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (canSave()) save.mutate();
+  }
 
   return (
     <div
       className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <div
+      <form
+        onSubmit={handleSubmit}
         className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-modal p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{existing ? "Edit category" : "New category"}</h2>
-          <button onClick={onClose} className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <button type="button" onClick={onClose} className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800">
             <X size={18} />
           </button>
         </div>
@@ -101,6 +114,7 @@ export function CategoryModal({ open, onClose, existing }: Props) {
           <div>
             {existing && (
               <button
+                type="button"
                 onClick={() => {
                   if (confirm(`Delete "${existing.name}" and all its bookmarks?`)) del.mutate();
                 }}
@@ -113,21 +127,22 @@ export function CategoryModal({ open, onClose, existing }: Props) {
           </div>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-sm"
             >
               Cancel
             </button>
             <button
-              onClick={() => save.mutate()}
-              disabled={save.isPending || !name.trim()}
+              type="submit"
+              disabled={!canSave()}
               className="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm disabled:opacity-50"
             >
               Save
             </button>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

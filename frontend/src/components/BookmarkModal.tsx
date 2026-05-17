@@ -4,6 +4,7 @@ import { Loader2, Trash2, X } from "lucide-react";
 
 import { api } from "../api";
 import type { Bookmark, Category, FaviconSource, Tag } from "../types";
+import { useEscape } from "../hooks/useEscape";
 import { FaviconPicker } from "./FaviconPicker";
 import { TagPicker } from "./TagPicker";
 
@@ -111,6 +112,8 @@ export function BookmarkModal({
       onClose();
     },
   });
+
+  useEscape(open, onClose);
 
   if (!open) return null;
 

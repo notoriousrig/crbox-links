@@ -4,6 +4,7 @@ import { Download, Loader2, Wrench, X } from "lucide-react";
 
 import { api } from "../api";
 import type { ImportResult } from "../types";
+import { useEscape } from "../hooks/useEscape";
 
 interface Props {
   open: boolean;
@@ -57,6 +58,8 @@ export function ImportModal({ open, onClose }: Props) {
     mutationFn: () => api.fixUrls(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bookmarks"] }),
   });
+
+  useEscape(open, onClose);
 
   if (!open) return null;
 
