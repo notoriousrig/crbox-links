@@ -58,3 +58,14 @@ def reorder_categories(payload: ReorderRequest, db: Session = Depends(get_db)):
         if c is not None:
             c.sort_order = item.sort_order
     db.commit()
+
+
+@router.post("/set-all-collapsed")
+def set_all_collapsed(payload: dict, db: Session = Depends(get_db)):
+    """Bulk-set the `collapsed` flag on every category. Used by the
+    "Expand all / Collapse all" header toggle.
+    """
+    collapsed = bool(payload.get("collapsed", False))
+    db.query(Category).update({"collapsed": collapsed}, synchronize_session=False)
+    db.commit()
+    return {"collapsed": collapsed, "count": db.query(Category).count()}

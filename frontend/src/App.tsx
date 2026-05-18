@@ -11,7 +11,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
-import { Bookmark as BookmarkIcon, CheckSquare, Download, FolderPlus, Menu, Plus, Settings, Upload, X } from "lucide-react";
+import { Bookmark as BookmarkIcon, CheckSquare, Download, FolderPlus, Maximize2, Menu, Minimize2, Plus, Settings, Upload, X } from "lucide-react";
 
 import { api } from "./api";
 import type { Bookmark, Category } from "./types";
@@ -276,6 +276,27 @@ export default function App() {
     },
   });
 
+  const anyExpanded = useMemo(
+    () => categories.some((c) => !c.collapsed),
+    [categories],
+  );
+
+  const setAllCollapsed = useMutation({
+    mutationFn: (collapsed: boolean) => api.setAllCollapsed(collapsed),
+    onMutate: async (collapsed) => {
+      await qc.cancelQueries({ queryKey: ["categories"] });
+      const previous = qc.getQueryData<Category[]>(["categories"]);
+      qc.setQueryData<Category[]>(["categories"], (old) =>
+        old ? old.map((c) => ({ ...c, collapsed })) : old,
+      );
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["categories"], ctx.previous);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+  });
+
   return (
     <UiLockContext.Provider value={uiLockValue}>
     <div className="min-h-full">
@@ -326,6 +347,13 @@ export default function App() {
           >
             <Download size={18} />
           </a>
+          <button
+            onClick={() => setAllCollapsed.mutate(anyExpanded)}
+            className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800"
+            title={anyExpanded ? "Collapse all categories" : "Expand all categories"}
+          >
+            {anyExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
           <button
             onClick={() => setSelectMode((v) => !v)}
             className={`p-2 rounded-lg ${

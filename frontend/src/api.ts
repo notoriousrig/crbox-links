@@ -28,6 +28,11 @@ export const api = {
   deleteCategory: (id: number) => req<void>(`/categories/${id}`, { method: "DELETE" }),
   reorderCategories: (items: { id: number; sort_order: number }[]) =>
     req<void>("/categories/reorder", { method: "POST", body: JSON.stringify({ items }) }),
+  setAllCollapsed: (collapsed: boolean) =>
+    req<{ collapsed: boolean; count: number }>("/categories/set-all-collapsed", {
+      method: "POST",
+      body: JSON.stringify({ collapsed }),
+    }),
 
   listBookmarks: () => req<Bookmark[]>("/bookmarks"),
   createBookmark: (data: {
