@@ -2,6 +2,7 @@ import { SortableContext, useSortable, rectSortingStrategy } from "@dnd-kit/sort
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Plus, Settings as SettingsIcon } from "lucide-react";
 import type { Bookmark, Category } from "../types";
+import { useUiLock } from "../hooks/useUiLock";
 import { CategoryCard } from "./CategoryCard";
 
 interface Props {
@@ -33,9 +34,11 @@ export function ParentSection({
   selectMode,
   onToggleSelect,
 }: Props) {
+  const { locked } = useUiLock();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `c:${parent.id}`,
     data: { kind: "category", category: parent },
+    disabled: locked,
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -51,14 +54,16 @@ export function ParentSection({
   return (
     <section ref={setNodeRef} style={style} id={`cat-${parent.id}`} className="scroll-mt-20">
       <header className="flex items-center gap-2 mb-3 group">
-        <button
-          {...attributes}
-          {...listeners}
-          className="p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 cursor-grab active:cursor-grabbing"
-          title="Drag to reorder"
-        >
-          <GripVertical size={14} />
-        </button>
+        {!locked && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 cursor-grab active:cursor-grabbing"
+            title="Drag to reorder"
+          >
+            <GripVertical size={14} />
+          </button>
+        )}
         {parent.icon && <span className="text-xl">{parent.icon}</span>}
         <h2 className="text-lg font-semibold tracking-tight">{parent.name}</h2>
         <span className="text-xs text-zinc-400 tabular-nums">

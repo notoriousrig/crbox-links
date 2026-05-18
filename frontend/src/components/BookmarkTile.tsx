@@ -3,6 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { AlertTriangle, MoreVertical } from "lucide-react";
 import type { Bookmark } from "../types";
 import { api } from "../api";
+import { useUiLock } from "../hooks/useUiLock";
 import { Favicon } from "./Favicon";
 
 interface Props {
@@ -14,9 +15,11 @@ interface Props {
 }
 
 export function BookmarkTile({ bookmark, onEdit, selected, selectMode, onToggleSelect }: Props) {
+  const { locked } = useUiLock();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `b:${bookmark.id}`,
     data: { kind: "bookmark", bookmark },
+    disabled: locked,
   });
 
   const style = {
@@ -33,11 +36,12 @@ export function BookmarkTile({ bookmark, onEdit, selected, selectMode, onToggleS
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer
+      className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg
                   bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800
-                  ${selected ? "ring-2 ring-brand-500" : ""}`}
-      {...attributes}
-      {...listeners}
+                  ${selected ? "ring-2 ring-brand-500" : ""}
+                  ${locked ? "" : "cursor-pointer"}`}
+      {...(locked ? {} : attributes)}
+      {...(locked ? {} : listeners)}
     >
       {selectMode && (
         <input

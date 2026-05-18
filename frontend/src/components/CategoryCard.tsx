@@ -2,6 +2,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, ChevronRight, GripVertical, Plus, Settings as SettingsIcon } from "lucide-react";
 import type { Bookmark, Category } from "../types";
+import { useUiLock } from "../hooks/useUiLock";
 import { BookmarkTile } from "./BookmarkTile";
 
 interface Props {
@@ -27,9 +28,11 @@ export function CategoryCard({
   selectMode,
   onToggleSelect,
 }: Props) {
+  const { locked } = useUiLock();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `c:${category.id}`,
     data: { kind: "category", category },
+    disabled: locked,
   });
 
   const style = {
@@ -47,14 +50,16 @@ export function CategoryCard({
       className="rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-tile overflow-hidden"
     >
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
-        <button
-          {...attributes}
-          {...listeners}
-          className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 cursor-grab active:cursor-grabbing"
-          title="Drag to reorder"
-        >
-          <GripVertical size={14} />
-        </button>
+        {!locked && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 cursor-grab active:cursor-grabbing"
+            title="Drag to reorder"
+          >
+            <GripVertical size={14} />
+          </button>
+        )}
         <button
           onClick={() => onToggleCollapse(category)}
           className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"

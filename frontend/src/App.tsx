@@ -28,12 +28,37 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { Sidebar } from "./components/Sidebar";
 import { ParentSection } from "./components/ParentSection";
 import { SettingsModal } from "./components/SettingsModal";
+import { UiLockContext } from "./hooks/useUiLock";
 
 export default function App() {
   const qc = useQueryClient();
   const { data: bookmarks = [] } = useQuery({ queryKey: ["bookmarks"], queryFn: api.listBookmarks });
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: api.listCategories });
   const { data: tags = [] } = useQuery({ queryKey: ["tags"], queryFn: api.listTags });
+  const { data: settings = {} } = useQuery({ queryKey: ["settings"], queryFn: api.getSettings });
+
+  const setSettingMut = useMutation({
+    mutationFn: ({ key, value }: { key: string; value: string }) => api.setSetting(key, value),
+    onMutate: async ({ key, value }) => {
+      await qc.cancelQueries({ queryKey: ["settings"] });
+      const previous = qc.getQueryData<Record<string, string>>(["settings"]);
+      qc.setQueryData<Record<string, string>>(["settings"], (old) => ({ ...(old ?? {}), [key]: value }));
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["settings"], ctx.previous);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["settings"] }),
+  });
+
+  const locked = settings.ui_locked === "true";
+  const uiLockValue = useMemo(
+    () => ({
+      locked,
+      setLocked: (v: boolean) => setSettingMut.mutate({ key: "ui_locked", value: v ? "true" : "false" }),
+    }),
+    [locked, setSettingMut],
+  );
 
   const [query, setQuery] = useState("");
   const [bookmarkModal, setBookmarkModal] = useState<{
@@ -252,6 +277,7 @@ export default function App() {
   });
 
   return (
+    <UiLockContext.Provider value={uiLockValue}>
     <div className="min-h-full">
       <header className="sticky top-0 z-30 bg-zinc-50/80 dark:bg-zinc-950/80 backdrop-blur border-b border-zinc-200 dark:border-zinc-800">
         <div className="px-4 py-3 flex items-center gap-3">
@@ -502,5 +528,6 @@ export default function App() {
         />
       )}
     </div>
+    </UiLockContext.Provider>
   );
 }

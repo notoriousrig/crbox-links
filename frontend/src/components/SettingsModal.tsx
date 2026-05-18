@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, Split, Wrench, X } from "lucide-react";
+import { Download, Loader2, Lock, Split, Wrench, X } from "lucide-react";
 
 import { api } from "../api";
 import { useEscape } from "../hooks/useEscape";
+import { useUiLock } from "../hooks/useUiLock";
 
 interface Props {
   open: boolean;
@@ -11,6 +12,7 @@ interface Props {
 
 export function SettingsModal({ open, onClose }: Props) {
   const qc = useQueryClient();
+  const { locked, setLocked } = useUiLock();
 
   const split = useMutation({
     mutationFn: () => api.splitNestedCategories(),
@@ -47,7 +49,29 @@ export function SettingsModal({ open, onClose }: Props) {
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
+          <div>
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+              UI
+            </h3>
+            <label className="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3 cursor-pointer">
+              <div>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  <Lock size={14} /> Lock UI
+                </div>
+                <div className="text-xs text-zinc-500 mt-0.5">
+                  Disable all drag-and-drop. Categories and bookmarks stay put. Useful once you've arranged things how you like them.
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={locked}
+                onChange={(e) => setLocked(e.target.checked)}
+                className="h-4 w-4 accent-brand-500 shrink-0"
+              />
+            </label>
+          </div>
+
           <div>
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-2">
               Data maintenance
