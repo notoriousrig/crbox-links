@@ -11,7 +11,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
-import { Bookmark as BookmarkIcon, Download, FolderPlus, Menu, Plus, Settings, Upload, X } from "lucide-react";
+import { Bookmark as BookmarkIcon, CheckSquare, Download, FolderPlus, Menu, Plus, Settings, Upload, X } from "lucide-react";
 
 import { api } from "./api";
 import type { Bookmark, Category } from "./types";
@@ -27,6 +27,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { Sidebar } from "./components/Sidebar";
 import { ParentSection } from "./components/ParentSection";
+import { SettingsModal } from "./components/SettingsModal";
 
 export default function App() {
   const qc = useQueryClient();
@@ -48,6 +49,7 @@ export default function App() {
     defaultParentId: null,
   });
   const [importOpen, setImportOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -307,6 +309,13 @@ export default function App() {
             }`}
             title="Bulk select"
           >
+            <CheckSquare size={18} />
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800"
+            title="Settings"
+          >
             <Settings size={18} />
           </button>
           <ThemeToggle />
@@ -480,6 +489,7 @@ export default function App() {
         defaultParentId={categoryModal.defaultParentId}
       />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {paletteOpen && (
         <CommandPalette
           bookmarks={bookmarks}

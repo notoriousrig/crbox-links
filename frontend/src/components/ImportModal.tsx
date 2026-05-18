@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, Split, Wrench, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { api } from "../api";
 import type { ImportResult } from "../types";
@@ -47,21 +47,6 @@ export function ImportModal({ open, onClose }: Props) {
       qc.invalidateQueries({ queryKey: ["categories"] });
       qc.invalidateQueries({ queryKey: ["tags"] });
     },
-  });
-
-  const warm = useMutation({
-    mutationFn: () => api.warmFaviconCache(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["bookmarks"] }),
-  });
-
-  const fix = useMutation({
-    mutationFn: () => api.fixUrls(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["bookmarks"] }),
-  });
-
-  const split = useMutation({
-    mutationFn: () => api.splitNestedCategories(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
   });
 
   useEscape(open, onClose);
@@ -140,119 +125,10 @@ export function ImportModal({ open, onClose }: Props) {
           </div>
         )}
 
-        <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
-          <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <div className="text-sm font-medium flex items-center gap-2">
-                  <Split size={14} /> Split nested categories
-                </div>
-                <div className="text-xs text-zinc-500 mt-0.5">
-                  Convert flat names like <code>AI / General</code> into parent <code>AI</code> + child <code>General</code>. Safe to re-run.
-                </div>
-              </div>
-              <button
-                onClick={() => split.mutate()}
-                disabled={split.isPending}
-                className="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm hover:bg-brand-600 disabled:opacity-50 flex items-center gap-1.5 shrink-0"
-              >
-                {split.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                {split.isPending ? "Splitting…" : "Split"}
-              </button>
-            </div>
-            {split.data && (
-              <div className="text-xs mt-2 text-green-700 dark:text-green-400">
-                ✓ Created {split.data.parents_created} parents · renamed {split.data.children_renamed} children
-                {split.data.samples.length > 0 && (
-                  <details className="mt-1 text-zinc-500">
-                    <summary className="cursor-pointer">First {split.data.samples.length} examples</summary>
-                    <ul className="mt-1 space-y-0.5 font-mono text-[11px]">
-                      {split.data.samples.map((s) => (
-                        <li key={s.id}>
-                          <span className="text-zinc-400">#{s.id}:</span> {s.before} <span className="text-zinc-400">→</span> {s.after}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </div>
-            )}
-            {split.isError && <div className="text-xs text-red-600">{(split.error as Error).message}</div>}
-          </div>
-
-          <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <div className="text-sm font-medium flex items-center gap-2">
-                  <Wrench size={14} /> Fix broken URLs
-                </div>
-                <div className="text-xs text-zinc-500 mt-0.5">
-                  Add <code>https:</code> prefix to bookmarks with <code>//host/path</code> or scheme-less URLs. Recovers booky.io internal refs by reading the title.
-                </div>
-              </div>
-              <button
-                onClick={() => fix.mutate()}
-                disabled={fix.isPending}
-                className="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm hover:bg-brand-600 disabled:opacity-50 flex items-center gap-1.5 shrink-0"
-              >
-                {fix.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                {fix.isPending ? "Fixing…" : "Fix URLs"}
-              </button>
-            </div>
-            {fix.data && (
-              <div className="text-xs mt-2">
-                <div className="text-green-700 dark:text-green-400">
-                  ✓ Fixed {fix.data.fixed} of {fix.data.examined} bookmarks.
-                </div>
-                {fix.data.samples.length > 0 && (
-                  <details className="mt-1">
-                    <summary className="cursor-pointer text-zinc-500">First {fix.data.samples.length} examples</summary>
-                    <ul className="mt-1 space-y-0.5 font-mono text-[11px]">
-                      {fix.data.samples.map((s) => (
-                        <li key={s.id} className="break-all">
-                          <span className="text-zinc-400">#{s.id}:</span> {s.before} <span className="text-zinc-400">→</span> {s.after}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </div>
-            )}
-            {fix.isError && <div className="text-xs text-red-600">{(fix.error as Error).message}</div>}
-          </div>
-
-          <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <div className="text-sm font-medium flex items-center gap-2">
-                  <Download size={14} /> Cache favicons locally
-                </div>
-                <div className="text-xs text-zinc-500 mt-0.5">
-                  Download every bookmark's favicon to <code>data/favicons/auto/</code>. Takes a few minutes for ~2k bookmarks.
-                </div>
-              </div>
-              <button
-                onClick={() => warm.mutate()}
-                disabled={warm.isPending}
-                className="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm hover:bg-brand-600 disabled:opacity-50 flex items-center gap-1.5 shrink-0"
-              >
-                {warm.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                {warm.isPending ? "Warming…" : "Warm cache"}
-              </button>
-            </div>
-            {warm.data && (
-              <div className="text-xs text-green-700 dark:text-green-400 mt-1">
-                ✓ {warm.data.cached_locally} cached locally · {warm.data.remote_only} kept remote ·
-                {" "}{warm.data.skipped} skipped (uploads/library)
-              </div>
-            )}
-            {warm.isError && (
-              <div className="text-xs text-red-600">{(warm.error as Error).message}</div>
-            )}
-          </div>
-          <div className="flex justify-end">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-sm">Close</button>
-          </div>
+        <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-sm">
+            Close
+          </button>
         </div>
       </div>
     </div>
